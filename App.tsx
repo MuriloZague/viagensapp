@@ -24,11 +24,12 @@ export default function App() {
 
     try {
     if(city === ""){
-      Alert.alert("Atenção!", "Preencha o nome da cidade")
+      Alert.alert("Atenção!!", "Preencha o nome da cidade")
       return;
     }
     setLoading(true);
     Keyboard.dismiss();
+
 
     const response = await axios.post(
       'https://api.ai.google.com/v1/dialog',
