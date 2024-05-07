@@ -1,78 +1,81 @@
-import React from 'react';
-import { useState } from 'react';
-import Slider from '@react-native-community/slider';
-import { View, StyleSheet, Text, TextInput, StatusBar, Platform, Pressable, ScrollView, ActivityIndicator, Alert,
-         Keyboard } from 'react-native';
+import { useState } from 'react'
+import {
+  StyleSheet, Text, View, StatusBar, TextInput, Platform, Pressable, ScrollView,
+  ActivityIndicator, Alert, Keyboard
+} from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons'
-import dotenv from 'react-native-config'
-import axios from 'axios';
+import Slider from '@react-native-community/slider'
 
-
-const geminiApiKey = process.env.GEMINI_API_KEY;
-
-const StatusBarHeight = StatusBar.currentHeight
+const statusBarHeight = StatusBar.currentHeight
+const KEY_GPT = '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';
 
 export default function App() {
 
   const [city, setCity] = useState("");
-  const [days, setDays] = useState(1);
+  const [days, setDays] = useState(3);
   const [loading, setLoading] = useState(false);
-  const [travel, setTravel] = useState("");
+  const [travel, setTravel] = useState("")
 
-
-  async function generateItinerary() {
-
-    try {
-    if(city === ""){
-      Alert.alert("Atenção!", "Preencha o nome da cidade")
+  async function handleGenerate() {
+    
+    if (city === "") {
+      Alert.alert("Atenção", "Preencha o nome da cidade!")
       return;
     }
+
+    setTravel("")
     setLoading(true);
     Keyboard.dismiss();
 
 
-    const response = await axios.post(
-      'https://api.ai.google.com/v1/dialog',
-      {
-        queryInput: {
-          text: {
-            text: `Crie um roteiro para uma viagem de exatos ${days.toFixed(0)} dias na cidade de ${city}, busque por lugares turísticos, lugares mais visitados, seja preciso nos dias de estadia fornecidos e limite o roteiro apenas na cidade fornecida. Forneça apenas em tópicos com nome do local onde ir em cada dia.`,
-            languageCode: 'pt-BR',
-          },
-        },
-        queryParams: {
-          key: geminiApiKey,
-        },
-      }
-    );
-    
-    const itinerary = response.data.queryResult.fulfillmentText;
-    setTravel(itinerary)
-    setLoading(false);
+    fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${KEY_GPT}`
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: 'user',
+            content: `Crie um roteiro para uma viagem de exatos ${days.toFixed(0)} dias na cidade de ${city}, busque por lugares turisticos, lugares mais visitados, seja preciso nos dias de estadia fornecidos e limite o roteiro apenas na cidade fornecida. Forneça apenas em tópicos com nome do local onde ir em cada dia.`
+          }
+        ],
+        temperature: 0.20,
+        max_tokens: 500,
+        top_p: 1,
+      })
+    })
+      .then(response => console.log(response.headers))
+      .then((data) => {
+        setTravel(data.choices[0].message.content)
+      })
+      .catch((error) => {
+        console.log(error);
+        alert(error)
+      })
+      .finally(() => {
+        setLoading(false);
+      })
 
-  } catch (error) {
-    console.error(error);
-    Alert.alert("Erro", "Falha ao gerar roteiro. Verifique sua conexão com a internet.");
   }
-  }
-    
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle={"dark-content"} translucent={true} backgroundColor={"#f1f1f1"}/>
-      <Text style={styles.heading}>Roteiros de Viagem</Text>
+      <StatusBar barStyle="dark-content" translucent={true} backgroundColor="#F1F1F1" />
+      <Text style={styles.heading}>Roteiros de Viagens</Text>
 
       <View style={styles.form}>
-        <Text style={styles.label}>Cidade Destino</Text>
-        <TextInput 
-          placeholder='Ex: São Paulo, SP'
+        <Text style={styles.label}>Cidade destino</Text>
+        <TextInput
+          placeholder="Ex: São Paulo, SP"
           style={styles.input}
           value={city}
-          onChangeText={ (text) => setCity(text) }
+          onChangeText={(text) => setCity(text)}
         />
 
-        {/** USAR O .toFixed(0) para escolher 0 casas decimais no número de dias */}
-        <Text style={styles.label}>Tempo de estadia: <Text style={styles.days}> {days.toFixed(0)} </Text> dias</Text> 
-
+        <Text style={styles.label}>Tempo de estadia: <Text style={styles.days}> {days.toFixed(0)} </Text> dias</Text>
         <Slider
           minimumValue={1}
           maximumValue={7}
@@ -82,29 +85,26 @@ export default function App() {
           onValueChange={(value) => setDays(value)}
         />
       </View>
-      <Pressable style={styles.button} onPress={generateItinerary}>
-        <Text style={styles.buttonText}>Gerar Roteiro</Text>
-        <MaterialIcons name='travel-explore' size={24} color={"white"}/>
+
+      <Pressable style={styles.button} onPress={handleGenerate}>
+        <Text style={styles.buttonText}>Gerar roteiro</Text>
+        <MaterialIcons name="travel-explore" size={24} color="#FFF" />
       </Pressable>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 18, marginTop: 4, }} 
-      style={styles.containerScroll} showsVerticalScrollIndicator={false}>
-        
-        {/** SE O LOADING FOR 'TRUE' APARECERÁ ESSA VIEW */}
+      <ScrollView contentContainerStyle={{ paddingBottom: 24, marginTop: 4, }} style={styles.containerScroll} showsVerticalScrollIndicator={false} >
         {loading && (
           <View style={styles.content}>
-          <Text style={styles.tittle}>Carregando Roteiro</Text>
-          <ActivityIndicator size='small' />
-        </View>
+            <Text style={styles.title}>Carregando roteiro...</Text>
+            <ActivityIndicator color="#000" size="large" />
+          </View>
         )}
-        
-        {/** VERIFICA SE EXISTE ALGUM CONTEÚDO NO BLOCO TRAVEL (se existir ele mostra a view)*/}
+
         {travel && (
-              <View style={styles.content}>
-                <Text style={styles.tittle}>Roteiro da viagem 👇</Text>
-                <Text>{travel}</Text>
-              </View>
-      )}
+          <View style={styles.content}>
+            <Text style={styles.title}>Rotreiro da viagem 👇</Text>
+            <Text style={{ lineHeight: 24, }}>{travel}</Text>
+          </View>
+        )}
       </ScrollView>
 
     </View>
@@ -112,71 +112,71 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: "#f1f1f1",
-      alignItems: 'center',
-      paddingTop: 20,
-    },
-    heading: {
-      fontSize: 32,
-      fontWeight: 'bold',
-      paddingTop: Platform.OS == 'android' ? StatusBarHeight : 54,
-    },
-    form: {
-      backgroundColor: "#fff",
-      width: "90%",
-      borderRadius: 8,
-      padding: 16,
-      marginTop: 16,
-      marginBottom: 8,
-    },
-    label: {
-      fontWeight: 'bold',
-      fontSize: 18,
-      marginBottom: 8,
-    },
-    input: {
-      borderWidth: 1,
-      borderRadius: 4,
-      borderColor: "#94a3b8",
-      padding: 8,
-      fontSize: 16,
-      marginBottom: 16,
-    },
-    days: {
-      backgroundColor: "#f1f1f1"
-    },
-    button: {
-      backgroundColor: "#FF5656",
-      width: "90%",
-      borderRadius: 8,
-      flexDirection: 'row',
-      padding: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-    },
-    buttonText: {
-      fontSize: 16,
-      color: "#fff",
-      fontWeight: 'bold',
-    },
-    content: {
-      backgroundColor: "#fff",
-      padding: 16,
-      width: "100%",
-      marginTop: 16,
-      borderRadius: 8,
-    },
-    tittle: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      textAlign: 'center',
-      marginBottom: 14,
-    },
-    containerScroll: {
-      width: "90%",
-      marginTop: 8,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: '#f1f1f1',
+    alignItems: 'center',
+    paddingTop: 20,
+  },
+  heading: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    paddingTop: Platform.OS === 'android' ? statusBarHeight : 54
+  },
+  form: {
+    backgroundColor: '#FFF',
+    width: '90%',
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  label: {
+    fontWeight: 'bold',
+    fontSize: 18,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 4,
+    borderColor: '#94a3b8',
+    padding: 8,
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  days: {
+    backgroundColor: '#F1f1f1'
+  },
+  button: {
+    backgroundColor: '#FF5656',
+    width: '90%',
+    borderRadius: 8,
+    flexDirection: 'row',
+    padding: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  buttonText: {
+    fontSize: 18,
+    color: '#FFF',
+    fontWeight: 'bold'
+  },
+  content: {
+    backgroundColor: '#FFF',
+    padding: 16,
+    width: '100%',
+    marginTop: 16,
+    borderRadius: 8,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 14
+  },
+  containerScroll: {
+    width: '90%',
+    marginTop: 8,
+  }
 });
